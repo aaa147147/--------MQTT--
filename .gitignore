@@ -4641,3 +4641,4 @@ __pycache__/mqtt_relay_controller.cpython-311.pyc
 ADBLogRelay_release-20241226.zip
 emqx-5.3.0-windows-amd64.zip
 PingTest.spec
+logfile.txt

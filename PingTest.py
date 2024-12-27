@@ -79,26 +79,37 @@ DINGTALK_MESSAGE_TIMEOUT = eval(DINGTALK_MESSAGE_TIMEOUT)  # 将字符串转换�
 DINGTALK_MESSAGE_ERROR = get_config('DingTalk', 'DINGTALK_MESSAGE_ERROR', required=True)
 DINGTALK_MESSAGE_ERROR = eval(DINGTALK_MESSAGE_ERROR)  # 将字符串转换为字典
 
-while True:
-    # 配置继电器MQTT
-    relay_controller = RelayController(
-        broker=RELAY_BROKER,
-        port=RELAY_PORT,
-        pub_topic=RELAY_PUB_TOPIC,
-        sub_topic=RELAY_SUB_TOPIC,
-        client_id=RELAY_CLIENT_ID,
-        username=RELAY_USERNAME,
-        password=RELAY_PASSWORD,
-        logger=logger
-    )
-    relay_controller.connect()
-    relay_controller.loop_start()
-    time.sleep(1)
-    if relay_controller.client.is_connected():
-        logger.info("MQTT 服务器已连接")
-        break
-    else:
-        logger.info("MQTT 服务器连接失败，正在重试")
+
+# 配置继电器MQTT
+relay_controller = RelayController(
+    broker=RELAY_BROKER,
+    port=RELAY_PORT,
+    pub_topic=RELAY_PUB_TOPIC,
+    sub_topic=RELAY_SUB_TOPIC,
+    client_id=RELAY_CLIENT_ID,
+    username=RELAY_USERNAME,
+    password=RELAY_PASSWORD,
+    logger=logger
+)
+# 连接MQTT
+try:
+    while True:
+        try:
+            relay_controller.connect()
+        except Exception as e:
+            logger.error(f"MQTT 服务器连接失败: {e} 正在重试")
+            time.sleep(1)
+            continue
+        relay_controller.loop_start()
+        time.sleep(1)
+        if relay_controller.client.is_connected():
+            logger.info("MQTT 服务器已连接")
+            break
+        else:
+            logger.info("MQTT 服务器连接失败，正在重试")
+except KeyboardInterrupt:
+    logger.info("正在退出...")
+    sys.exit(1)
 
 # 创建device_checker
 if ADBDEVICECKR_ENABLED:
