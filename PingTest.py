@@ -5,6 +5,8 @@ import requests
 import configparser
 import sys
 import ctypes
+import json
+import datetime
 
 from mqtt_relay_controller import RelayController  # 引入RelayController类
 from adbdeviceckr import DeviceChecker
@@ -12,7 +14,9 @@ from adbdeviceckr import DeviceChecker
 # 设置控制台窗口标题
 ctypes.windll.kernel32.SetConsoleTitleW('PingTest-V01 Copyright © 2024 #EE_Lixin. All Rights Reserved.')
 
-LOG_FILE = "logfile.txt"
+current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+LOG_FILE = f"./log/{current_time}-logfile.txt"
 # 配置日志
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -75,9 +79,7 @@ RELAY_PASSWORD = get_config('MQTT', 'RELAY_PASSWORD', required=True)
 
 DINGTALK_WEBHOOK_URL = get_config('DingTalk', 'DINGTALK_WEBHOOK_URL', required=True)
 DINGTALK_MESSAGE_TIMEOUT = get_config('DingTalk', 'DINGTALK_MESSAGE_TIMEOUT', required=True)
-DINGTALK_MESSAGE_TIMEOUT = eval(DINGTALK_MESSAGE_TIMEOUT)  # 将字符串转换为字典
 DINGTALK_MESSAGE_ERROR = get_config('DingTalk', 'DINGTALK_MESSAGE_ERROR', required=True)
-DINGTALK_MESSAGE_ERROR = eval(DINGTALK_MESSAGE_ERROR)  # 将字符串转换为字典
 
 
 # 配置继电器MQTT
@@ -178,8 +180,34 @@ class NetworkMonitor:
                         elapsed_time = time.time() - start_time
                         if elapsed_time > self.timeout:
                             logger.error(f"测试超时,耗时{elapsed_time}>{self.timeout}，Thread未全部通过")
-                            break
 
+                            #如果可靠性APP未启动，抓取logcat和bugreport
+                            if ADBDEVICECKR_STATUS == 0:
+                                logger.error(f"Thread结果获取出错！")
+                                ret = device_checker.save_logcat()
+                                #如果是系统没有起来，直接退出，保持继电器状态
+                                if 'System_startup_failed' in ret:
+                                    msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
+                                    parts = msgData['text']['content'].split(':')
+                                    parts[1] = " 系统未启动"
+                                    msgData['text']['content'] = ':'.join(parts)
+                                    requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
+                                    return
+                                #如果是测试软件没有起来，报错后继续测试，保持现状
+                                elif 'Test_software_startup_failed' in ret:
+                                    msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
+                                    parts = msgData['text']['content'].split(':')
+                                    parts[1] = " 测试软件未启动"
+                                    msgData['text']['content'] = ':'.join(parts)
+                                    requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
+                                    break
+                            else:
+                                msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
+                                parts = msgData['text']['content'].split(':')
+                                parts[1] = " Thread测试未全部通过"
+                                msgData['text']['content'] = ':'.join(parts)
+                                requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
+                        break
                 # 延迟断电
                 logger.info(f"延迟{TIMEDELAY}秒断电")
                 time.sleep(TIMEDELAY)
@@ -198,12 +226,12 @@ class NetworkMonitor:
                 elapsed_time = time.time() - start_time
                 if elapsed_time > self.timeout:
                     logger.error(f"测试超时,耗时{elapsed_time}>{self.timeout}")
-                    requests.post(DINGTALK_WEBHOOK_URL, json=DINGTALK_MESSAGE_TIMEOUT)
+                    requests.post(DINGTALK_WEBHOOK_URL, json=json.loads(str(DINGTALK_MESSAGE_TIMEOUT)))
                     return
 
 def handle_exception(exc_type, exc_value, exc_traceback):
-    logger.error("出现未知错误！")
-    requests.post(DINGTALK_WEBHOOK_URL, json=DINGTALK_MESSAGE_ERROR)
+    logger.error(f"出现未知错误！{exc_type}\n{exc_value}\n{exc_traceback}")
+    requests.post(DINGTALK_WEBHOOK_URL, json=json.loads(str(DINGTALK_MESSAGE_ERROR)))
 
 if __name__ == "__main__":
     sys.excepthook = handle_exception

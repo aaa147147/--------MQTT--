@@ -1,8 +1,10 @@
-import uiautomator2 as u2
-import xml.etree.ElementTree as ET
+import os
 import subprocess
 import time
 import logging
+import uiautomator2 as u2
+import xml.etree.ElementTree as ET
+import datetime
 
 class DeviceChecker:
     def __init__(self, ip_addresses, logger):
@@ -10,9 +12,11 @@ class DeviceChecker:
         self.thread_pass_num = {ip: None for ip in ip_addresses}
         self.previous_thread_pass_num = {ip: None for ip in ip_addresses}
         self.logger = logger
+        self.log_dir = './log'
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
 
     def disconnect_device(self, ip):
-        #return True
         subprocess.run(['adb', 'disconnect'])
 
     def connect_device(self, ip):
@@ -25,10 +29,8 @@ class DeviceChecker:
             elements = d.dump_hierarchy()
             root = ET.fromstring(elements)
             for elem in root.iter():
-                #self.logger.info(elem.attrib)
                 if elem.attrib.get("resource-id") == 'com.sdmc.facTest:id/thread_num':
                     text = elem.attrib.get('text')
-                    #self.logger.info(text)
                     if text:
                         thread_pass_num = int(text.split(':')[1].split('/')[0])
                         thread_total_num = int(text.split(':')[1].split('/')[1])
@@ -42,15 +44,21 @@ class DeviceChecker:
             self.logger.info(f"获取{ip}的Thread通过数时发生错误: {e}")
             self.disconnect_device(ip)
         return None
+    def get_current_package_name(self, ip):
+        self.connect_device(ip)  # 连接设备
+        d = u2.connect(ip)
+        elements = d.dump_hierarchy()
+        root = ET.fromstring(elements)
+        packageName = root[0].attrib.get('package')
+        self.disconnect_device(ip)
+        return packageName
 
     def update_thread_pass_num(self):
         for ip in self.ip_addresses:
             new_thread_pass_num = self.get_thread_pass_num(ip)
             if new_thread_pass_num is None:
-                #self.logger.info(f"{ip}-Thread通过数获取失败")
                 return False
             self.thread_pass_num[ip] = new_thread_pass_num
-            # 如果第一个IP的thread_pass_num没有变化，则跳出循环
             if self.previous_thread_pass_num[ip] == self.thread_pass_num[ip]:
                 break
         return True
@@ -72,11 +80,30 @@ class DeviceChecker:
         return all_changed
 
     def get_current_thread_pass_num_and_update_previous(self):
+        self.previous_thread_pass_num = {ip: None for ip in self.ip_addresses}
         if not self.update_thread_pass_num():
             return False
         self.previous_thread_pass_num = self.thread_pass_num.copy()
         return self.thread_pass_num
 
+    def save_logcat(self):
+        ret = 'Pass'
+        for ip in self.ip_addresses:
+            if None == self.get_thread_pass_num(ip):
+                self.connect_device(ip)  # 连接设备
+                current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                logcat_file_path = os.path.join(self.log_dir, f'{current_time}_{ip}_logcat.txt')
+                with open(logcat_file_path, 'w') as logcat_file:
+                    subprocess.run(['adb', '-s', ip, 'logcat', '-d'], stdout=logcat_file)
+                self.logger.info(f"Logcat for {ip} saved to {logcat_file_path}")
+                self.disconnect_device(ip)
+
+                if 'com.google.android.apps.tv.launcherx' == self.get_current_package_name(ip):
+                    ret = ret +'--' + 'Test_software_startup_failed'
+                else:
+                    ret = ret +'--' + 'System_startup_failed'
+        return ret        
+                
 # 示例使用
 if __name__ == "__main__":
     IP_ADDRESSES = [
