@@ -9,7 +9,7 @@ import json
 import datetime
 
 from mqtt_relay_controller import RelayController  # 引入RelayController类
-from adbdeviceckr import DeviceChecker
+from adbdeviceckr import DeviceMonitor
 
 # 设置控制台窗口标题
 ctypes.windll.kernel32.SetConsoleTitleW('PingTest-V01 Copyright © 2024 #EE_Lixin. All Rights Reserved.')
@@ -115,7 +115,7 @@ except KeyboardInterrupt:
 
 # 创建device_checker
 if ADBDEVICECKR_ENABLED:
-    device_checker = DeviceChecker(IP_ADDRESSES, logger)
+    device_checker = DeviceMonitor(IP_ADDRESSES, logger)
 
 class NetworkMonitor:
     def __init__(self, ip_addresses, timeout):
@@ -141,10 +141,6 @@ class NetworkMonitor:
         start_time = time.time()  # 记录开始时间
 
         while True:
-            # ADBDEVICECKR状态
-            if ADBDEVICECKR_ENABLED:
-                ADBDEVICECKR_STATUS = 0
-
             all_pinged = True  # 假设所有网口都 ping 通了
             for ip in self.ip_addresses:
                 if not self.ping_ip(ip):
@@ -163,51 +159,40 @@ class NetworkMonitor:
 
                 # 获取当前测试次数
                 if ADBDEVICECKR_ENABLED:
-                    while True:
-                        if ADBDEVICECKR_STATUS == 0:
-                            ret = device_checker.get_current_thread_pass_num_and_update_previous()
-                            if False != ret:
-                                ADBDEVICECKR_STATUS = 1
-                                elapsed_time = time.time() - start_time
-                                logger.info(f"初始状态{ret},耗时{elapsed_time}秒")
-                        elif ADBDEVICECKR_STATUS == 1:
-                            # 更新threadPassNum并检查是否有变化
-                            if device_checker.has_thread_pass_num_changed():
-                                elapsed_time = time.time() - start_time
-                                logger.info(f"Thread测试全部成功,耗时{elapsed_time}秒")
-                                break
-                        # 检查是否超时
-                        elapsed_time = time.time() - start_time
-                        if elapsed_time > self.timeout:
-                            logger.error(f"测试超时,耗时{elapsed_time}>{self.timeout}，Thread未全部通过")
 
-                            #如果可靠性APP未启动，抓取logcat和bugreport
-                            if ADBDEVICECKR_STATUS == 0:
-                                logger.error(f"Thread结果获取出错！")
-                                ret = device_checker.save_logcat()
-                                #如果是系统没有起来，直接退出，保持继电器状态
-                                if 'System_startup_failed' in ret:
-                                    msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
-                                    parts = msgData['text']['content'].split(':')
-                                    parts[1] = " 系统未启动"
-                                    msgData['text']['content'] = ':'.join(parts)
-                                    requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
-                                    return
-                                #如果是测试软件没有起来，报错后继续测试，保持现状
-                                elif 'Test_software_startup_failed' in ret:
-                                    msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
-                                    parts = msgData['text']['content'].split(':')
-                                    parts[1] = " 测试软件未启动"
-                                    msgData['text']['content'] = ':'.join(parts)
-                                    requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
-                                    break
-                            else:
-                                msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
-                                parts = msgData['text']['content'].split(':')
-                                parts[1] = " Thread测试未全部通过"
-                                msgData['text']['content'] = ':'.join(parts)
-                                requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
-                        break
+                    ret = device_checker.monitor_thread_pass_counts(self.timeout - elapsed_time)
+                    elapsed_time = time.time() - start_time
+
+                    if 'timeoutConnect' in ret:
+                        logger.error(f"连接超时,耗时{elapsed_time}>{self.timeout}")
+
+                    elif 'timeoutInit' in ret:
+                        logger.error(f"获取Thread初始值超时,耗时{elapsed_time}>{self.timeout}")
+
+                    elif 'threadNotAllPass' in ret:
+                        logger.error(f"测试超时,耗时{elapsed_time}>{self.timeout}，Thread未全部通过")
+
+                    elif 'AllPass' in ret:
+                        logger.info(f"Thread测试全部成功,耗时{elapsed_time}秒")
+
+                    if 'timeout' in ret:
+                        ret = device_checker.save_logcat()
+                        #如果是系统没有起来，直接退出，保持继电器状态
+                        if 'System_startup_failed' in ret:
+                            msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
+                            parts = msgData['text']['content'].split(':')
+                            parts[1] = " 系统未启动"
+                            msgData['text']['content'] = ':'.join(parts)
+                            requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
+                            return
+                        #如果是测试软件没有起来，报错后继续测试，保持现状
+                        elif 'Test_software_startup_failed' in ret:
+                            msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
+                            parts = msgData['text']['content'].split(':')
+                            parts[1] = " 测试软件未启动"
+                            msgData['text']['content'] = ':'.join(parts)
+                            requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
+
                 # 延迟断电
                 logger.info(f"延迟{TIMEDELAY}秒断电")
                 time.sleep(TIMEDELAY)
