@@ -183,10 +183,13 @@ class DeviceMonitor:
         for ip in self.device_ips:
             if self.get_thread_pass_count(ip) is None:
                 current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                logcat_file_path = os.path.join(self.log_directory, f'{current_time}_{ip}_logcat.txt')
-                with open(logcat_file_path, 'w') as logcat_file:
-                    subprocess.run(['adb', '-s', ip, 'logcat', '-d'], stdout=logcat_file, timeout=10)
-                self.logger.info(f"Logcat for {ip} saved to {logcat_file_path}")
+                try:
+                    logcat_file_path = os.path.join(self.log_directory, f'{current_time}_{ip}_logcat.txt')
+                    with open(logcat_file_path, 'w') as logcat_file:
+                        subprocess.run(['adb', '-s', ip, 'logcat', '-d'], stdout=logcat_file, timeout=30)
+                    self.logger.info(f"Logcat for {ip} saved to {logcat_file_path}")
+                except Exception as e:
+                    self.logger.error(f"{ip}-Logcat保存失败: {e}")
 
                 package_name = self._get_current_package_name(ip)
                 if package_name == 'com.google.android.apps.tv.launcherx':
