@@ -12,7 +12,7 @@ from mqtt_relay_controller import RelayController  # 引入RelayController类
 from adbdeviceckr import DeviceMonitor
 
 # 设置控制台窗口标题
-ctypes.windll.kernel32.SetConsoleTitleW('PingTest-V01 Copyright © 2024 #EE_Lixin. All Rights Reserved.')
+ctypes.windll.kernel32.SetConsoleTitleW('PingTest-V02 Copyright © 2024 #EE_Lixin. All Rights Reserved.')
 
 current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
@@ -67,7 +67,8 @@ IP_ADDRESSES = get_config('Settings', 'IP_ADDRESSES', required=True).split(',')
 TIMEDELAY = int(get_config('Settings', 'TIMEDELAY', default=5, required=True))
 TIMEOUT = int(get_config('Settings', 'TIMEOUT', default=240, required=True))
 TIME_RELAYOFF = int(get_config('Settings', 'TIME_RELAYOFF', default=10, required=True))
-ADBDEVICECKR_ENABLED = get_config('Settings', 'ADBDEVICECKR_ENABLED', default=True, required=True)
+ADBDEVICECKR_ENABLED = get_config('Settings', 'ADBDEVICECKR_ENABLED', default=False, required=True)
+THREADTEST_ENABLED = get_config('Settings', 'THREADTEST_ENABLED', default=False, required=True)
 
 RELAY_BROKER = get_config('MQTT', 'RELAY_BROKER', required=True)
 RELAY_PORT = int(get_config('MQTT', 'RELAY_PORT', default=1883, required=True))
@@ -115,7 +116,7 @@ except KeyboardInterrupt:
 
 # 创建device_checker
 if ADBDEVICECKR_ENABLED:
-    device_checker = DeviceMonitor(IP_ADDRESSES, logger)
+    device_checker = DeviceMonitor(IP_ADDRESSES, logger,'./log/',THREADTEST_ENABLED)
 
 class NetworkMonitor:
     def __init__(self, ip_addresses, timeout):

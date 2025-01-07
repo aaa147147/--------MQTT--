@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 import datetime
 
 class DeviceMonitor:
-    def __init__(self, device_ips, logger, log_directory='./log'):
+    def __init__(self, device_ips, logger, log_directory,thread_test_enable):
         self.device_ips = device_ips
         self.previous_thread_pass_counts = {ip: None for ip in self.device_ips}
         self.current_thread_pass_counts = {ip: None for ip in self.device_ips}
@@ -15,6 +15,7 @@ class DeviceMonitor:
         self.logger = logger
         self.log_directory = log_directory
         self._ensure_log_directory_exists()
+        self.thread_test_enable = thread_test_enable
 
         # # 连接所有设备
         # while True:
@@ -155,7 +156,7 @@ class DeviceMonitor:
                 break
 
         # 监控所有Thread测试通过次数
-        while True:
+        while True and self.thread_test_enable:
             all_changed = True
             for ip in self.device_ips:
                 if time.time() - start_time > timeout:
