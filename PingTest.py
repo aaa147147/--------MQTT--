@@ -7,6 +7,7 @@ import sys
 import ctypes
 import json
 import datetime
+import traceback
 
 from mqtt_relay_controller import RelayController  # 引入RelayController类
 from adbdeviceckr import DeviceMonitor
@@ -182,7 +183,7 @@ class NetworkMonitor:
                         if 'System_startup_failed' in ret:
                             msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
                             parts = msgData['text']['content'].split(':')
-                            parts[1] = " 系统未启动"
+                            parts[1] = " 超时后未获取到launcher，可能是：系统未启动、网络问题"
                             msgData['text']['content'] = ':'.join(parts)
                             requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
                             return
@@ -190,7 +191,7 @@ class NetworkMonitor:
                         elif 'Test_software_startup_failed' in ret:
                             msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
                             parts = msgData['text']['content'].split(':')
-                            parts[1] = " 测试软件未启动"
+                            parts[1] = " 超时后停留在launcher，可能是：测试APP未启动"
                             msgData['text']['content'] = ':'.join(parts)
                             requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
 
@@ -212,12 +213,29 @@ class NetworkMonitor:
                 elapsed_time = time.time() - start_time
                 if elapsed_time > self.timeout:
                     logger.error(f"测试超时,耗时{elapsed_time}>{self.timeout}")
-                    requests.post(DINGTALK_WEBHOOK_URL, json=json.loads(str(DINGTALK_MESSAGE_TIMEOUT)))
+
+                    msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
+                    parts = msgData['text']['content'].split(':')
+                    parts[1] = f"超时后有机器超时未Ping通!测试退出"
+                    msgData['text']['content'] = ':'.join(parts)        
+
+                    requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
                     return
 
 def handle_exception(exc_type, exc_value, exc_traceback):
-    logger.error(f"出现未知错误！{exc_type}\n{exc_value}\n{exc_traceback}")
-    requests.post(DINGTALK_WEBHOOK_URL, json=json.loads(str(DINGTALK_MESSAGE_ERROR)))
+    logger.error("未捕获的异常\n")
+    logger.error(f"类型: {exc_type.__name__}\n")
+    logger.error(f"值: {exc_value}\n")
+    logger.error("回溯:\n")
+    tb = traceback.format_tb(exc_traceback)
+    logger.error("\n".join(tb))
+
+    msgData = json.loads(str(DINGTALK_MESSAGE_ERROR))
+    parts = msgData['text']['content'].split(':')
+    parts[1] = f"出现异常!{exc_value}。测试退出"
+    msgData['text']['content'] = ':'.join(parts)
+
+    requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
 
 if __name__ == "__main__":
     sys.excepthook = handle_exception
