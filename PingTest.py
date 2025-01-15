@@ -11,6 +11,7 @@ import traceback
 
 from mqtt_relay_controller import RelayController  # 引入RelayController类
 from adbdeviceckr import DeviceMonitor
+from cyclepingtest import Cyclepingtest
 
 # 设置控制台窗口标题
 ctypes.windll.kernel32.SetConsoleTitleW('PingTest-V02 Copyright © 2024 #EE_Lixin. All Rights Reserved.')
@@ -70,6 +71,10 @@ TIMEOUT = int(get_config('Settings', 'TIMEOUT', default=240, required=True))
 TIME_RELAYOFF = int(get_config('Settings', 'TIME_RELAYOFF', default=10, required=True))
 ADBDEVICECKR_ENABLED = get_config('Settings', 'ADBDEVICECKR_ENABLED', default=False, required=True)
 THREADTEST_ENABLED = get_config('Settings', 'THREADTEST_ENABLED', default=False, required=True)
+CYCLEPINGTEST_ENABLED = get_config('Settings', 'CYCLEPINGTEST', default=False, required=True)
+
+CYCLEPINGTEST_TIMES = int(get_config('CYCLEPINGTEST', 'CYCLEPINGTEST_TIMES', default=5, required=True))
+CYCLEPINGTEST_DELAY = int(get_config('CYCLEPINGTEST', 'CYCLEPINGTEST_DELAY', default=5, required=True))
 
 RELAY_BROKER = get_config('MQTT', 'RELAY_BROKER', required=True)
 RELAY_PORT = int(get_config('MQTT', 'RELAY_PORT', default=1883, required=True))
@@ -119,6 +124,10 @@ except KeyboardInterrupt:
 if ADBDEVICECKR_ENABLED:
     device_checker = DeviceMonitor(IP_ADDRESSES, logger,'./log/',THREADTEST_ENABLED)
 
+# 创建cyclepingtest
+if CYCLEPINGTEST_ENABLED:
+    cyclepingtest = Cyclepingtest(IP_ADDRESSES, logger,'./log/')
+
 class NetworkMonitor:
     def __init__(self, ip_addresses, timeout):
         self.ip_addresses = ip_addresses
@@ -128,7 +137,7 @@ class NetworkMonitor:
     def ping_ip(self, ip):
         # 使用系统命令 ping 进行网络检测
         response = subprocess.run(['ping', '-n', '1', ip], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return response.returncode == 0
+        return 'ms' in str(response.stdout)
 
     def start_test(self):
         # 开始测试
@@ -159,9 +168,27 @@ class NetworkMonitor:
                 self.success_count += 1  # 增加成功次数
                 logger.info(f"测试成功次数: {self.success_count}")
 
+                if CYCLEPINGTEST_ENABLED:
+                    ret = cyclepingtest.run(CYCLEPINGTEST_DELAY,CYCLEPINGTEST_TIMES,self.timeout - elapsed_time)
+                    elapsed_time = time.time() - start_time
+
+                    if "Pass" in ret:
+                        logger.info(f"循环ping测试通过,耗时{elapsed_time}秒")
+                    elif "timeout" in ret:
+                        logger.info(f"循环ping测试超时,耗时{elapsed_time}秒")
+                    elif "Fail" in ret:
+                        logger.info(f"循环ping测试失败,耗时{elapsed_time}秒")
+
+                    if 'Fail' in ret:
+                        msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
+                        parts = msgData['text']['content'].split(':')
+                        parts[1] = "循环ping测试失败，可能是：网络问题"
+                        msgData['text']['content'] = ':'.join(parts)
+                        requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
+                        return
+                    
                 # 获取当前测试次数
                 if ADBDEVICECKR_ENABLED:
-
                     ret = device_checker.monitor_thread_pass_counts(self.timeout - elapsed_time)
                     elapsed_time = time.time() - start_time
 
