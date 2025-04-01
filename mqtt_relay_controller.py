@@ -109,13 +109,13 @@ class RelayController(MQTTClient):
             time.sleep(0.1)
 
     def turn_on_relay(self):
-        max_retries = 5
+        max_retries = 10
         self.relay_state = 1
         for attempt in range(max_retries):
             self.confirmation_received = False
             self.publish(self.pub_topic, {"type": "event", "key": 1})
             try:
-                self.wait_for_confirmation()
+                self.wait_for_confirmation((attempt+1)*5)
                 self.logger.info("继电器已成功打开")
                 return
             except Exception as e:
@@ -123,13 +123,13 @@ class RelayController(MQTTClient):
         raise Exception("多次尝试后继电器打开失败")
 
     def turn_off_relay(self):
-        max_retries = 5
+        max_retries = 10
         self.relay_state = 0
         for attempt in range(max_retries):
             self.confirmation_received = False
             self.publish(self.pub_topic, {"type": "event", "key": 0})
             try:
-                self.wait_for_confirmation()
+                self.wait_for_confirmation((attempt+1)*5)
                 self.logger.info("继电器已成功关闭")
                 return
             except Exception as e:
