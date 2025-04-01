@@ -158,15 +158,14 @@ class NetworkMonitor:
         while True:
             all_pinged = True  # 假设所有网口都 ping 通了
             for ip in self.ip_addresses:
-                if self.ip_status[ip] == 'PingPass':
-                    continue
-                if not self.ping_ip(ip):
-                    all_pinged = False  # 如果有一个网口未 ping 通，则设置为False
-                    logger.info(f"IP {ip} 未 ping 通")
-                    break
-                else:
-                    logger.info(f"IP {ip} 已 ping 通")
-                    self.ip_status[ip] = 'PingPass'
+                if self.ip_status[ip] != 'PingPass':
+                    if not self.ping_ip(ip):
+                        all_pinged = False  # 如果有一个网口未 ping 通，则设置为False
+                        logger.info(f"IP {ip} 未 ping 通")
+                        break
+                    else:
+                        logger.info(f"IP {ip} 已 ping 通")
+                        self.ip_status[ip] = 'PingPass'
 
             if all_pinged:
                 elapsed_time = time.time() - start_time
@@ -182,7 +181,12 @@ class NetworkMonitor:
                     if "Pass" in ret:
                         logger.info(f"循环ping测试通过,耗时{elapsed_time}秒")
                     elif "timeout" in ret:
-                        logger.info(f"循环ping测试超时,耗时{elapsed_time}秒")
+                        msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))
+                        parts = msgData['text']['content'].split(':')
+                        parts[1] = "循环ping测试超时，可能是：网络问题"
+                        msgData['text']['content'] = ':'.join(parts)
+                        requests.post(DINGTALK_WEBHOOK_URL, json=msgData)
+                        return
                     elif "Fail" in ret:
                         logger.info(f"循环ping测试失败,耗时{elapsed_time}秒")
 
@@ -242,10 +246,18 @@ class NetworkMonitor:
 
                 # 重置计时器
                 start_time = time.time()
+                #初始化状态
+                for ip in self.ip_addresses:
+                    self.ip_status[ip] = 'Init'
+
             else:
                 # 检查是否超时
                 elapsed_time = time.time() - start_time
                 if elapsed_time > self.timeout:
+                    #初始化状态
+                    for ip in self.ip_addresses:
+                        self.ip_status[ip] = 'Init'
+                    
                     logger.error(f"测试超时,耗时{elapsed_time}>{self.timeout}")
 
                     msgData = json.loads(str(DINGTALK_MESSAGE_TIMEOUT))

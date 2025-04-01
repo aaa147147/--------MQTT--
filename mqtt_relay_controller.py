@@ -16,7 +16,12 @@ class MQTTClient:
         self.password = password
         self.logger = logger
 
-        self.client = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION1, self.client_id)
+        # 根据是否存在 CallbackAPIVersion 选择初始化方式
+        if hasattr(mqtt_client, 'CallbackAPIVersion'):
+            self.client = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION1,self.client_id)
+        else:
+            self.client = mqtt_client.Client(self.client_id)  # 旧版初始化
+    
         self.client.username_pw_set(self.username, self.password)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
@@ -61,7 +66,7 @@ class MQTTClient:
     def on_message(self, client, userdata, msg):
         payload = json.loads(msg.payload.decode())
         self.logger.info(f"收到消息: {payload}")
-        if payload.get("type") == "Socket-mini-v2" and int(payload.get("key")) == self.relay_state:
+        if payload.get("type") == "Breaker-base-1" and int(payload.get("key")) == self.relay_state:
             self.confirmation_received = True
 
     def connect(self):
