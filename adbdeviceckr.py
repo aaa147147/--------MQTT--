@@ -5,9 +5,11 @@ import logging
 import uiautomator2 as u2
 import xml.etree.ElementTree as ET
 import datetime
+import json
+import requests
 
 class DeviceMonitor:
-    def __init__(self, device_ips, logger, log_directory,thread_test_enable):
+    def __init__(self, device_ips, logger, log_directory,thread_test_enable,DINGTALK_WEBHOOK_URL,DINGTALK_MESSAGE_TIMEOUT):
         self.device_ips = device_ips
         self.previous_thread_pass_counts = {ip: None for ip in self.device_ips}
         self.current_thread_pass_counts = {ip: None for ip in self.device_ips}
@@ -16,6 +18,8 @@ class DeviceMonitor:
         self.log_directory = log_directory
         self._ensure_log_directory_exists()
         self.thread_test_enable = thread_test_enable
+        self.dingtalk_webhook_url = DINGTALK_WEBHOOK_URL
+        self.dingtalk_message_timeout = DINGTALK_MESSAGE_TIMEOUT
 
         # # 连接所有设备
         # while True:
@@ -44,6 +48,9 @@ class DeviceMonitor:
 
     def _disconnect_device(self, ip):
         self._execute_command(['adb', 'disconnect', ip])
+
+    def adb_bugreport(self, ip):
+        self._execute_command(['adb', '-s', ip,'bugreport'])
 
     def _connect_device(self, ip):
         try:
@@ -194,7 +201,16 @@ class DeviceMonitor:
 
                 package_name = self._get_current_package_name(ip)
                 if package_name == 'com.google.android.apps.tv.launcherx':
-                    result += '--' + 'Test_software_startup_failed'
+                    result += '--' + f'Test_software_startup_failed'
+                    
+                    # self.adb_bugreport(ip)
+                    # msgData = json.loads(str(self.dingtalk_message_timeout))
+                    # parts = msgData['text']['content'].split(':')
+                    # parts[1] = f"{ip} 超时后停留在launcher，可能是：测试APP未启动"
+                    # msgData['text']['content'] = ':'.join(parts)
+                    # requests.post(self.dingtalk_message_timeout, json=msgData)
+
+
                 else:
                     result += '--' + 'System_startup_failed'
         return result

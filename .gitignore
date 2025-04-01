@@ -4657,3 +4657,7 @@ log/20250108_112617-logfile.txt
 log/20250108_112729-logfile.txt
 log/20250108_112936-logfile.txt
 log/20250115_165645-logfile.txt
+ADBLogRelay_release/adbdeviceckr.py
+ADBLogRelay_release/cyclepingtest.py
+ADBLogRelay_release/mqtt_relay_controller.py
+ADBLogRelay_release/PingTest.py

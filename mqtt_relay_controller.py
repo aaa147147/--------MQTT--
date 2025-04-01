@@ -16,7 +16,7 @@ class MQTTClient:
         self.password = password
         self.logger = logger
 
-        self.client = mqtt_client.Client(self.client_id)
+        self.client = mqtt_client.Client(mqtt_client.CallbackAPIVersion.VERSION1, self.client_id)
         self.client.username_pw_set(self.username, self.password)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
@@ -161,13 +161,10 @@ if __name__ == '__main__':
 
     while True:
         if relay_controller.client.is_connected():
-            try:
-                relay_controller.turn_on_relay()
-                time.sleep(5)  # 保持继电器打开5秒
-                relay_controller.turn_off_relay()
-                time.sleep(5)  # 保持继电器关闭5秒
-            except Exception as e:
-                logger.error(f"控制继电器时出错: {e}")
+            relay_controller.turn_on_relay()
+            time.sleep(5)  # 保持继电器打开5秒
+            relay_controller.turn_off_relay()
+            time.sleep(5)  # 保持继电器关闭5秒
         else:
             relay_controller.loop_stop()
     relay_controller.close()

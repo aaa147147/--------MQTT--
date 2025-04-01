@@ -71,7 +71,7 @@ TIMEOUT = int(get_config('Settings', 'TIMEOUT', default=240, required=True))
 TIME_RELAYOFF = int(get_config('Settings', 'TIME_RELAYOFF', default=10, required=True))
 ADBDEVICECKR_ENABLED = get_config('Settings', 'ADBDEVICECKR_ENABLED', default=False, required=True)
 THREADTEST_ENABLED = get_config('Settings', 'THREADTEST_ENABLED', default=False, required=True)
-CYCLEPINGTEST_ENABLED = get_config('Settings', 'CYCLEPINGTEST', default=False, required=True)
+CYCLEPINGTEST_ENABLED = get_config('Settings', 'CYCLEPINGTEST_ENABLED', default=False, required=True)
 
 CYCLEPINGTEST_TIMES = int(get_config('CYCLEPINGTEST', 'CYCLEPINGTEST_TIMES', default=5, required=True))
 CYCLEPINGTEST_DELAY = int(get_config('CYCLEPINGTEST', 'CYCLEPINGTEST_DELAY', default=5, required=True))
@@ -122,7 +122,7 @@ except KeyboardInterrupt:
 
 # 创建device_checker
 if ADBDEVICECKR_ENABLED:
-    device_checker = DeviceMonitor(IP_ADDRESSES, logger,'./log/',THREADTEST_ENABLED)
+    device_checker = DeviceMonitor(IP_ADDRESSES, logger,'./log/',THREADTEST_ENABLED,DINGTALK_WEBHOOK_URL,DINGTALK_MESSAGE_TIMEOUT)
 
 # 创建cyclepingtest
 if CYCLEPINGTEST_ENABLED:
@@ -133,6 +133,10 @@ class NetworkMonitor:
         self.ip_addresses = ip_addresses
         self.timeout = timeout
         self.success_count = 0  # 添加成功次数计数器
+
+        self.ip_status = dict()
+        for ip in self.ip_addresses:
+            self.ip_status[ip] = 'Init'
 
     def ping_ip(self, ip):
         # 使用系统命令 ping 进行网络检测
@@ -154,12 +158,15 @@ class NetworkMonitor:
         while True:
             all_pinged = True  # 假设所有网口都 ping 通了
             for ip in self.ip_addresses:
+                if self.ip_status[ip] == 'PingPass':
+                    continue
                 if not self.ping_ip(ip):
                     all_pinged = False  # 如果有一个网口未 ping 通，则设置为False
                     logger.info(f"IP {ip} 未 ping 通")
                     break
                 else:
                     logger.info(f"IP {ip} 已 ping 通")
+                    self.ip_status[ip] = 'PingPass'
 
             if all_pinged:
                 elapsed_time = time.time() - start_time
