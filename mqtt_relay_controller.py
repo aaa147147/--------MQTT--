@@ -6,7 +6,7 @@ from paho.mqtt import client as mqtt_client
 
 
 class MQTTClient:
-    def __init__(self, broker, port, pub_topic, sub_topic, client_id, username, password, logger, message_check_name, message_check_key, message_check_value):
+    def __init__(self,broker,port,pub_topic,sub_topic,client_id,username,password,logger,message_check_name,message_check_key,message_check_value):
         self.broker = broker
         self.port = port
         self.pub_topic = pub_topic
@@ -106,8 +106,8 @@ class MQTTClient:
 
 
 class RelayController(MQTTClient):
-    def __init__(self, broker, port, pub_topic, sub_topic, client_id, username, password, logger):
-        super().__init__(broker, port, pub_topic, sub_topic, client_id, username, password, logger)
+    def __init__(self, broker, port, pub_topic, sub_topic, client_id, username, password, logger,message_check_name,message_check_key,message_check_value):
+        super().__init__(broker, port, pub_topic, sub_topic, client_id, username, password, logger,message_check_name,message_check_key,message_check_value)
 
     def wait_for_confirmation(self, timeout=5):
         start_time = time.time()

@@ -109,9 +109,9 @@ relay_controller = RelayController(
     username=RELAY_USERNAME,
     password=RELAY_PASSWORD,
     logger=logger,
-    message_check_name = RELAY_message_check_name,
-    message_check_key = RELAY_message_check_key,
-    message_check_value = RELAY_message_check_value
+    message_check_name = "RELAY_message_check_name",
+    message_check_key = "RELAY_message_check_key",
+    message_check_value = "RELAY_message_check_value"
 )
 # 连接MQTT
 try:

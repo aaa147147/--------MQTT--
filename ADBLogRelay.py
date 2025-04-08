@@ -23,17 +23,26 @@ def git_clone(repo_url, repo_path):
 
 def git_pull(repo_path):
     """
-    使用 Dulwich 拉取远程仓库的最新更改
+    强制拉取远程仓库的最新更改，丢弃所有本地未提交的修改
     :param repo_path: 本地仓库路径
     """
     try:
         repo = Repo(repo_path)
-        porcelain.pull(repo, remote_location="origin")  # 拉取远程更新
-        print("Git拉取已成功完成。")
+        
+        # 1. 丢弃所有未暂存的修改（相当于 `git checkout -- .`）
+        porcelain.checkout(repo, force=True)
+        
+        # 2. 丢弃所有暂存的修改（相当于 `git reset --hard`）
+        repo.reset_index()
+        
+        # 3. 强制拉取远程最新更改（相当于 `git fetch origin && git reset --hard origin/<branch>`）
+        porcelain.pull(repo, remote_location="origin", force=True)
+        
+        print("强制拉取成功，本地已与远程完全同步。")
     except NotGitRepository:
         print("错误：目标路径不是Git仓库。")
-    except Exception as e:
-        print("拉取时出错：", e)
+    except GitError as e:
+        print("强制拉取时出错：", e)
 
 def run_script(script_path):
     """
