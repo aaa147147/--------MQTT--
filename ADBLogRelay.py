@@ -1,9 +1,8 @@
 import os
 import subprocess
 try:
-    from dulwich import porcelain  # Dulwich 的高级API
-    from dulwich.repo import Repo
-    from dulwich.errors import NotGitRepository
+    from dulwich import porcelain
+    from dulwich.repo import Repo, NotGitRepository
 except ImportError:
     print("模块 dulwich 未找到，请使用以下命令安装：pip install dulwich")
     exit(1)
@@ -29,21 +28,24 @@ def git_pull(repo_path):
     try:
         repo = Repo(repo_path)
         
-        # 1. 丢弃所有未暂存的修改（相当于 `git checkout -- .`）
-        porcelain.checkout(repo, force=True)
+        # 1. 获取远程最新数据
+        porcelain.fetch(repo, remote_location="origin")
         
-        # 2. 丢弃所有暂存的修改（相当于 `git reset --hard`）
+        # 2. 获取当前分支名（如 "main" 或 "master"）
+        current_branch = repo.refs.follow(b"HEAD")[0][1].decode("utf-8").split("/")[-1]
+        remote_branch = f"origin/{current_branch}"
+        
+        # 3. 强制重置本地分支到远程最新状态（相当于 `git reset --hard origin/<branch>`）
+        repo.refs[b"HEAD"] = repo.refs[f"refs/remotes/{remote_branch}".encode("utf-8")]
         repo.reset_index()
-        
-        # 3. 强制拉取远程最新更改（相当于 `git fetch origin && git reset --hard origin/<branch>`）
-        porcelain.pull(repo, remote_location="origin", force=True)
         
         print("强制拉取成功，本地已与远程完全同步。")
     except NotGitRepository:
         print("错误：目标路径不是Git仓库。")
-    except GitError as e:
+    except Exception as e:
         print("强制拉取时出错：", e)
 
+        
 def run_script(script_path):
     """
     运行指定的Python脚本（与原代码一致，无需修改）
