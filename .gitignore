@@ -4661,3 +4661,8 @@ ADBLogRelay_release/adbdeviceckr.py
 ADBLogRelay_release/cyclepingtest.py
 ADBLogRelay_release/mqtt_relay_controller.py
 ADBLogRelay_release/PingTest.py
+__pycache__/adbdeviceckr.cpython-313.pyc
+__pycache__/cyclepingtest.cpython-313.pyc
+__pycache__/mqtt_relay_controller.cpython-313.pyc
+log/20250408_193008-logfile.txt
+log/20250408_194439-logfile.txt

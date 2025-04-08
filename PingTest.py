@@ -8,6 +8,7 @@ import ctypes
 import json
 import datetime
 import traceback
+import os
 
 from mqtt_relay_controller import RelayController  # 引入RelayController类
 from adbdeviceckr import DeviceMonitor
@@ -18,7 +19,13 @@ ctypes.windll.kernel32.SetConsoleTitleW('PingTest-V02 Copyright © 2024 #EE_Lixi
 
 current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-LOG_FILE = f"./log/{current_time}-logfile.txt"
+log_folder = './log'
+if not os.path.exists(log_folder):
+    os.makedirs(log_folder)
+    print(f"文件夹 {log_folder} 已创建")
+else:
+    print(f"文件夹 {log_folder} 已存在")
+LOG_FILE = f"{log_folder}/{current_time}-logfile.txt"
 # 配置日志
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

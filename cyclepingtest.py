@@ -7,59 +7,41 @@ class Cyclepingtest:
         self.logger = logger
         self.log_directory = log_directory
 
-        # 初始化每个IP的状态为 'Init'
-        self.ip_status = {ip: 'Init' for ip in self.device_ips}
-
     def ping_ip(self, ip):
-        # 使用系统命令 ping 进行网络检测
         response = subprocess.run(['ping', '-n', '1', ip], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return 'ms' in str(response.stdout)
 
     def run(self, CYCLEPINGTEST_DELAY, CYCLEPINGTEST_TIMES, timeout):
-        """
-        主循环逻辑：
-        1. 如果完成所有测试轮次且全部通过，则返回 'pingPass'。
-        2. 如果有未通过的测试，持续测试直到超时，返回 'timeoutRun'。
-        """
-        ping_times = 0
         start_time = time.time()
+        consecutive_success = 0
 
         while True:
-            # 等待下一轮测试
-            time.sleep(CYCLEPINGTEST_DELAY)
-            ping_times += 1
-            self.logger.info(f"开始第{ping_times}轮测试....")
-
-
-            # 检查是否达到最大测试轮次
-            if ping_times > CYCLEPINGTEST_TIMES:
-                # 如果所有IP状态均为 'PingPass'，则返回 'pingPass'
-                if all(status == 'PingPass' for status in self.ip_status.values()):
-                    self.logger.info(f"本次监控结果：AllPass, 测试次数: {ping_times - 1}次")
-                    return 'pingPass'
-
-            # 检查是否超时
+            # 超时检查
             if time.time() - start_time > timeout:
                 self.logger.info("达到超时时间，退出监控。")
                 return 'timeoutRun'
 
-            # 遍历每个IP进行测试
+            # 测试所有IP的连通性
+            all_passed = True
             for ip in self.device_ips:
-                # 如果当前IP未通过测试，则持续ping直到ping通或超时
-                while self.ip_status[ip] != 'PingPass':
-                    if self.ping_ip(ip):
-                        self.logger.info(f"{ip} 已 ping 通")
-                        self.ip_status[ip] = 'PingPass'
-                    else:
-                        self.logger.warning(f"{ip} 未 ping 通")
-                        # 检查是否超时
-                        if time.time() - start_time > timeout:
-                            self.logger.info(f"{ip} 达到超时时间，退出监控。")
-                            return 'timeoutRun'
-                    # 等待一段时间后再次尝试ping
-                    time.sleep(CYCLEPINGTEST_DELAY)
+                if not self.ping_ip(ip):
+                    self.logger.warning(f"{ip} 未ping通。")
+                    all_passed = False
+                    break
+                self.logger.info(f"{ip} 已ping通。")
 
+            # 处理测试结果
+            if all_passed:
+                consecutive_success += 1
+                if consecutive_success >= CYCLEPINGTEST_TIMES:
+                    self.logger.info(f"所有IP连续{CYCLEPINGTEST_TIMES}次测试通过，返回成功。")
+                    return 'pingPass'
+            else:
+                consecutive_success = 0  # 重置连续成功计数
+                # 若为多次测试模式，立即返回失败
+                if CYCLEPINGTEST_TIMES > 1:
+                    self.logger.info("存在未通过的IP，返回失败。")
+                    return 'pingFailed'
 
-
-
-
+            # 等待下一轮测试
+            time.sleep(CYCLEPINGTEST_DELAY)
