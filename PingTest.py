@@ -90,6 +90,9 @@ RELAY_SUB_TOPIC = get_config('MQTT', 'RELAY_SUB_TOPIC', required=True)
 RELAY_CLIENT_ID = get_config('MQTT', 'RELAY_CLIENT_ID', required=True)
 RELAY_USERNAME = get_config('MQTT', 'RELAY_USERNAME', required=True)
 RELAY_PASSWORD = get_config('MQTT', 'RELAY_PASSWORD', required=True)
+RELAY_message_check_name = get_config('MQTT', 'message_check_name', required=True)
+RELAY_message_check_key = get_config('MQTT', 'message_check_key', required=True)
+RELAY_message_check_value = get_config('MQTT', 'message_check_value', required=True)
 
 DINGTALK_WEBHOOK_URL = get_config('DingTalk', 'DINGTALK_WEBHOOK_URL', required=True)
 DINGTALK_MESSAGE_TIMEOUT = get_config('DingTalk', 'DINGTALK_MESSAGE_TIMEOUT', required=True)
@@ -105,7 +108,10 @@ relay_controller = RelayController(
     client_id=RELAY_CLIENT_ID,
     username=RELAY_USERNAME,
     password=RELAY_PASSWORD,
-    logger=logger
+    logger=logger,
+    message_check_name = RELAY_message_check_name,
+    message_check_key = RELAY_message_check_key,
+    message_check_value = RELAY_message_check_value
 )
 # 连接MQTT
 try:

@@ -6,7 +6,7 @@ from paho.mqtt import client as mqtt_client
 
 
 class MQTTClient:
-    def __init__(self, broker, port, pub_topic, sub_topic, client_id, username, password, logger):
+    def __init__(self, broker, port, pub_topic, sub_topic, client_id, username, password, logger, message_check_name, message_check_key, message_check_value):
         self.broker = broker
         self.port = port
         self.pub_topic = pub_topic
@@ -15,6 +15,9 @@ class MQTTClient:
         self.username = username
         self.password = password
         self.logger = logger
+        self.message_check_name = message_check_name
+        self.message_check_key = message_check_key
+        self.message_check_value = message_check_value
 
         # 根据是否存在 CallbackAPIVersion 选择初始化方式
         if hasattr(mqtt_client, 'CallbackAPIVersion'):
@@ -66,7 +69,7 @@ class MQTTClient:
     def on_message(self, client, userdata, msg):
         payload = json.loads(msg.payload.decode())
         self.logger.info(f"收到消息: {payload}")
-        if payload.get("type") == "Breaker-base-1" and int(payload.get("key")) == self.relay_state:
+        if payload.get(self.message_check_name) == self.message_check_key and int(payload.get(self.message_check_value)) == self.relay_state:
             self.confirmation_received = True
 
     def connect(self):
