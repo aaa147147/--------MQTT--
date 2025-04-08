@@ -1,0 +1,11 @@
+-kernel prevent_overlapping_partitions false
+-kernel net_ticktime 120
+-env ERL_CRASH_DUMP_BYTES 104857600
+-env ERL_CRASH_DUMP_SECONDS 30
+-env ERL_CRASH_DUMP c:/Users/PC/Desktop/ADBLogRelay/emqx-5.3.0-windows-amd64/log/erl_crash.dump
++e 262144
++zdbbl 8192
++Q 1048576
+-setcookie emqxsecretcookie
++P 2097152
+-name "emqx@127.0.0.1"
