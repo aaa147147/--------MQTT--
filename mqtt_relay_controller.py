@@ -154,14 +154,17 @@ if __name__ == '__main__':
     logger.addHandler(handler)
 
     relay_controller = RelayController(
-        broker='127.0.0.1',
+        broker='192.168.31.10',
         port=1883,
-        pub_topic="test",
-        sub_topic="test",
-        client_id='yHRHObdxdHyB',
-        username='MQTT1',
+        pub_topic="test1",
+        sub_topic="test1",
+        client_id='pcpc',
+        username='MQTT2',
         password='123456',
-        logger=logger
+        logger=logger,
+        message_check_name='type',
+        message_check_key='Breaker-base-1',
+        message_check_value='key'
     )
     relay_controller.connect()
     relay_controller.loop_start()
