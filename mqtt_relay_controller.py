@@ -1,6 +1,7 @@
 import json
 import logging
 import time
+import sys
 
 from paho.mqtt import client as mqtt_client
 
@@ -108,6 +109,25 @@ class MQTTClient:
 class RelayController(MQTTClient):
     def __init__(self, broker, port, pub_topic, sub_topic, client_id, username, password, logger,message_check_name,message_check_key,message_check_value):
         super().__init__(broker, port, pub_topic, sub_topic, client_id, username, password, logger,message_check_name,message_check_key,message_check_value)
+        # 连接MQTT
+        try:
+            while True:
+                try:
+                    self.connect()
+                except Exception as e:
+                    logger.error(f"MQTT 服务器连接失败: {e} 正在重试")
+                    time.sleep(1)
+                    continue
+                self.loop_start()
+                time.sleep(1)
+                if self.client.is_connected():
+                    logger.info("MQTT 服务器已连接")
+                    break
+                else:
+                    logger.info("MQTT 服务器连接失败，正在重试")
+        except KeyboardInterrupt:
+            logger.info("正在退出...")
+            sys.exit(1)
 
     def wait_for_confirmation(self, timeout=5):
         start_time = time.time()
