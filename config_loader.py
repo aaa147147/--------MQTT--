@@ -55,6 +55,7 @@ def load_config(logger, config_file='config.ini'):
     try:
         for k, v in config.items('EventActions'):
             EVENT_ACTIONS[k.strip().upper()] = str(v).strip().lower()
+            logger.info(f"读取到事件处理映射关系 {k.strip().upper()}: {EVENT_ACTIONS[k.strip().upper()]}")
     except (configparser.NoSectionError):
         logger.error("配置项 EventActions 未找到")
         while True:
