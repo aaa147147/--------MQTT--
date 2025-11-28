@@ -1,6 +1,7 @@
 import time
 import configparser
 from types import SimpleNamespace
+from event_manager import EventType
 
 def load_config(logger, config_file='config.ini'):
     config = configparser.ConfigParser()
@@ -50,12 +51,14 @@ def load_config(logger, config_file='config.ini'):
     DINGTALK_MESSAGE_TIMEOUT = get_config('DingTalk', 'DINGTALK_MESSAGE_TIMEOUT', required=True)
     DINGTALK_MESSAGE_ERROR = get_config('DingTalk', 'DINGTALK_MESSAGE_ERROR', required=True)
 
-    EVENT_ACTIONS = {}
+    EVENT_ACTIONS = {t.name: "exit" for t in EventType}
     try:
         for k, v in config.items('EventActions'):
             EVENT_ACTIONS[k.strip().upper()] = str(v).strip().lower()
     except (configparser.NoSectionError):
-        EVENT_ACTIONS = {}
+        logger.error("配置项 EventActions 未找到")
+        while True:
+            time.sleep(100)
 
     return SimpleNamespace(
         IP_ADDRESSES=IP_ADDRESSES,

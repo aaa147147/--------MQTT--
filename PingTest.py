@@ -6,8 +6,7 @@ import ctypes
 import datetime
 import traceback
 import os
-from event_manager import EventType, EventManager
-from event_policy import should_restart, resolve_event_action
+from event_manager import EventType, EventManager, should_restart, resolve_event_action
 from event_handlers import register_handlers
 
 from config_loader import load_config

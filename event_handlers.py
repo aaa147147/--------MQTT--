@@ -1,7 +1,6 @@
 import json
 import requests
-from event_manager import EventType, Event
-from event_policy import resolve_event_action
+from event_manager import EventType, Event, resolve_event_action
 
 
 def _compose_dingtalk_message(template, content_text):
