@@ -26,13 +26,13 @@ else:
     print(f"文件夹 {log_folder} 已存在")
 LOG_FILE = f"{log_folder}/{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}-logfile.txt"
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.NOTSET)
 file_handler = logging.FileHandler(LOG_FILE, mode='w')
 file_handler.setLevel(logging.INFO)
 file_formatter = logging.Formatter('%(asctime)s - %(message)s')
 file_handler.setFormatter(file_formatter)
 stream_handler = logging.StreamHandler()
-stream_handler.setLevel(logging.INFO)
+stream_handler.setLevel(logging.NOTSET)
 stream_formatter = logging.Formatter('%(asctime)s - %(message)s')
 stream_handler.setFormatter(stream_formatter)
 logger.addHandler(file_handler)
@@ -69,7 +69,7 @@ class NetworkMonitor:
         self.ip_status = dict()
 
     def ping_ip(self, ip):
-        ret = ping(ip, count=1, timeout=2, size=32, verbose=True)
+        ret = ping(ip, count=1, timeout=2, size=32)
         return ret.success()
     def all_ping(self):
         all_pinged = True # 假设所有网口都 ping 通了
