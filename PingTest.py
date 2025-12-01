@@ -53,11 +53,11 @@ relay_controller = RelayController(broker=pingTestcfg.RELAY_BROKER,port=pingTest
 
 # 创建device_checker
 if pingTestcfg.ADBDEVICECKR_ENABLED:
-    device_checker = DeviceMonitor(pingTestcfg.IP_ADDRESSES, logger,'./log/',pingTestcfg.THREADTEST_ENABLED,pingTestcfg.DINGTALK_WEBHOOK_URL,pingTestcfg.DINGTALK_MESSAGE_TIMEOUT, event_manager)
+    device_checker = DeviceMonitor(pingTestcfg.IP_ADDRESSES, logger,log_folder,pingTestcfg.THREADTEST_ENABLED,pingTestcfg.DINGTALK_WEBHOOK_URL,pingTestcfg.DINGTALK_MESSAGE_TIMEOUT, event_manager)
 
 # 创建cyclepingtest
 if pingTestcfg.CYCLEPINGTEST_ENABLED:
-    cyclepingtest = Cyclepingtest(pingTestcfg.IP_ADDRESSES, logger,'./log/', pingTestcfg, event_manager)
+    cyclepingtest = Cyclepingtest(pingTestcfg.IP_ADDRESSES, logger,log_folder, pingTestcfg, event_manager)
 
 
 class NetworkMonitor:
@@ -79,10 +79,10 @@ class NetworkMonitor:
         for ip in self.ip_addresses:
             if not self.ping_ip(ip):
                 all_pinged = False
-                self.event_manager.emit_async(EventType.PING_FAIL, {"ip": ip})
+                logger.debug(f"IP {ip} 未 ping 通")
                 break
             else:
-                self.event_manager.emit_async(EventType.PING_SUCCESS, {"ip": ip})
+                logger.debug(f"IP {ip} 已 ping 通")
                 self.ip_status[ip] = 'PingPass'
         return all_pinged
     def start_test(self):
@@ -100,7 +100,7 @@ class NetworkMonitor:
         while True:
             if self.all_ping():
                 elapsed_time = time.time() - start_time
-                self.event_manager.emit(EventType.PING_PASS, {"elapsed": elapsed_time})
+                logger.info(f"所有网口都 ping 通了,耗时{elapsed_time}秒")
                 self.success_count += 1
                 logger.info(f"测试成功次数: {self.success_count}")
 
@@ -154,8 +154,15 @@ class NetworkMonitor:
                         return
 
 def handle_exception(exc_type, exc_value, exc_traceback):
-    tb = traceback.format_tb(exc_traceback)
-    event_manager.emit(EventType.UNCAUGHT_EXCEPTION, {"exc_type": exc_type.__name__, "exc_value": str(exc_value), "trace": "\n".join(tb)})
+    tb = "\n".join(traceback.format_tb(exc_traceback))
+
+    logger.error("未捕获的异常\n")
+    logger.error(f"类型: {exc_type.__name__}\n")
+    logger.error(f"值: {str(exc_value)}\n")
+    logger.error("回溯:\n")
+    logger.error(f"trace: {tb}")
+
+    event_manager.emit(EventType.UNCAUGHT_EXCEPTION, {"exc_type": exc_type.__name__, "exc_value": str(exc_value), "trace": tb})
 
 if __name__ == "__main__":
     sys.excepthook = handle_exception

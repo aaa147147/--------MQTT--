@@ -11,6 +11,7 @@ from event_manager import EventType
 class DeviceMonitor:
     THREAD_NUM_RESOURCE_ID = 'com.sdmc.facTest:id/thread_num'
     LAUNCHER_PKG = 'com.google.android.apps.tv.launcherx'
+    OTHERS_PKG = 'com.google.android.apps.tv.launcherx'
 
     def __init__(self, device_ips, logger, log_directory,thread_test_enable,DINGTALK_WEBHOOK_URL,DINGTALK_MESSAGE_TIMEOUT, event_manager=None):
         self.device_ips = device_ips
@@ -19,15 +20,10 @@ class DeviceMonitor:
         self.ui_devices: Dict[str, Optional[u2.Device]] = {ip: None for ip in self.device_ips}
         self.logger = logger
         self.log_directory = log_directory
-        self._ensure_log_directory_exists()
         self.thread_test_enable = thread_test_enable
         self.dingtalk_webhook_url = DINGTALK_WEBHOOK_URL
         self.dingtalk_message_timeout = DINGTALK_MESSAGE_TIMEOUT
         self.event_manager = event_manager
-    def _ensure_log_directory_exists(self):
-        if not os.path.exists(self.log_directory):
-            os.makedirs(self.log_directory)
-
     def _execute_command(self, command):
         try:
             subprocess.run(command, check=True)
@@ -42,12 +38,11 @@ class DeviceMonitor:
 
     def _connect_device(self, ip):
         try:
-            subprocess.run(['adb', 'connect', ip], check=True)
-            ui = u2.connect(ip)
+            ui = u2.connect(ip + ':5555')
             if ui.info.get('productName'):
                 self.logger.info(f"设备 {ip} 连接成功")
                 return ui
-            self.logger.error(f"设备 {ip} 连接失败")
+            self.logger.error(f"无法获取设备的产品名称:{ip}")
             return None
         except Exception as e:
             self.logger.error(f"设备 {ip} 连接失败: {e}")
@@ -120,74 +115,72 @@ class DeviceMonitor:
         self.ui_devices = {ip: None for ip in self.device_ips}
 
         while True:
+            #连接所有设备，并等待进入测试页面，获取Thread初始测试通过次数
             all_initialized = True
             for ip in self.device_ips:
                 elapsed = time.time() - start_time
                 if elapsed > timeout:
+                    #超时抓取Logcat，并判断当前状态
                     self.logger.info("达到超时时间，退出监控。")
-                    self._emit(EventType.DEVICE_TIMEOUT_CONNECT, {"elapsed": elapsed})
-                    ret2 = self.save_logcat()
-                    if 'System_startup_failed' in ret2:
-                        self._emit(EventType.SYSTEM_STARTUP_FAILED, {})
-                    elif 'Test_software_startup_failed' in ret2:
-                        self._emit(EventType.TEST_SOFTWARE_STARTUP_FAILED, {})
+                    self.save_logcat()
+                    self._emit(EventType.ADB_DEVICE_TIMEOUT_INIT, {"elapsed": elapsed, "initFailed_IP": [ip for ip, s in self.ui_devices.items() if s == None]})
+                    
+
+                    package_name = self._get_current_package_name(ip)
+                    #停留在Launcher界面
+                    if package_name == self.LAUNCHER_PKG:
+                        self._emit(EventType.ADB_TEST_SOFTWARE_STARTUP_FAILED, {"Failed_IP": ip, "package_name": package_name})  #停留在Launcher界面
+                    elif package_name == self.OTHERS_PKG:
+                        self._emit(EventType.ADB_TEST_SOFTWARE_STARTUP_FAILED, {"Failed_IP": ip, "package_name": package_name})  #停留在其他界面
+                    else:
+                        self._emit(EventType.ADB_SYSTEM_STARTUP_FAILED, {"Failed_IP": ip}) #不在以上界面，说明系统启动失败
                     return 'timeoutConnect'
+                
+                #连接设备
                 if self.ui_devices[ip] is None:
                     self.ui_devices[ip] = self._connect_device(ip)
                 if self.ui_devices[ip] is None:
                     all_initialized = False
-            if all_initialized:
-                self.logger.info(f"所有设备已连接成功,耗时{time.time() - start_time:.2f}秒")
-                break
 
-        while True:
-            all_initialized = True
-            for ip in self.device_ips:
-                elapsed = time.time() - start_time
-                if elapsed > timeout:
-                    self.logger.info("达到超时时间，退出监控。")
-                    self._emit(EventType.DEVICE_TIMEOUT_INIT, {"elapsed": elapsed})
-                    ret2 = self.save_logcat()
-                    if 'System_startup_failed' in ret2:
-                        self._emit(EventType.SYSTEM_STARTUP_FAILED, {})
-                    elif 'Test_software_startup_failed' in ret2:
-                        self._emit(EventType.TEST_SOFTWARE_STARTUP_FAILED, {})
-                    return 'timeoutInit'
-                if self.previous_thread_pass_counts[ip] is None:
+                #获取Thread初始测试通过次数
+                if self.previous_thread_pass_counts[ip] is None and self.ui_devices[ip] is not None:
                     self.previous_thread_pass_counts[ip] = self.get_thread_pass_count(ip)
                 if self.previous_thread_pass_counts[ip] is None:
                     all_initialized = False
                 else:
                     self.logger.info(f"{ip}-Thread初始次数已获取-{self.previous_thread_pass_counts[ip]}")
             if all_initialized:
+                self.logger.info(f"所有设备已连接成功,耗时{time.time() - start_time:.2f}秒")
                 self.logger.info(f"所有设备的Thread测试通过次数已初始化:{self.previous_thread_pass_counts}")
                 break
 
         while True and self.thread_test_enable:
+            #监控Thread测试通过次数是否发生变化
             all_changed = True
             for ip in self.device_ips:
                 elapsed = time.time() - start_time
                 if elapsed > timeout:
                     self.logger.info("达到超时时间，退出监控。")
-                    self._emit(EventType.DEVICE_THREAD_NOT_ALL_PASS, {"elapsed": elapsed})
-                    return 'threadNotAllPass'
+                    self._emit(EventType.ADB_DEVICE_THREAD_NOT_ALL_PASS, {"elapsed": elapsed, "Failed_IP": [ip for ip, s in self.current_thread_pass_counts.items() if s == None]})
+                    return
+                #获取Thread测试通过次数
                 new_thread_pass_count = self.get_thread_pass_count(ip)
                 if new_thread_pass_count is None:
                     continue
+                #判断是否变化
                 self.current_thread_pass_counts[ip] = new_thread_pass_count
                 if self.previous_thread_pass_counts[ip] == self.current_thread_pass_counts[ip]:
+                    self.current_thread_pass_counts[ip] = None
                     all_changed = False
                 else:
                     self.logger.info(f"{ip}-Thread测试次数改变，从{self.previous_thread_pass_counts[ip]}变成{self.current_thread_pass_counts[ip]}")
             if all_changed:
-                self.logger.info(f"所有设备的Thread通过数已发生变化:{self.current_thread_pass_counts}")
+                elapsed = time.time() - start_time
+                self.logger.info(f"所有设备的Thread通过数已发生变化:{self.current_thread_pass_counts}，耗时：{elapsed:.2f}秒")
                 break
-        elapsed = time.time() - start_time
-        self._emit(EventType.DEVICE_ALL_PASS, {"elapsed": elapsed})
-        return 'AllPass'
+        return
 
     def save_logcat(self):
-        result = 'Pass'
         for ip in self.device_ips:
             if self.get_thread_pass_count(ip) is None:
                 current_time = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -199,23 +192,4 @@ class DeviceMonitor:
                 except Exception as e:
                     self.logger.error(f"{ip}-Logcat保存失败: {e}")
 
-                package_name = self._get_current_package_name(ip)
-                if package_name == self.LAUNCHER_PKG:
-                    result += '--' + f'Test_software_startup_failed'
-                else:
-                    result += '--' + 'System_startup_failed'
-        return result
-
-def setup_logger():
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-
-    # 创建控制台处理器
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.INFO)
-    stream_formatter = logging.Formatter('%(asctime)s - %(message)s')
-    stream_handler.setFormatter(stream_formatter)
-
-    logger.addHandler(stream_handler)
-    return logger
 
