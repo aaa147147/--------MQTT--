@@ -33,7 +33,7 @@ def register_handlers(event_manager, pingTestcfg, logger):
         msg=f"测试超时,耗时{event.data['elapsed']}>{pingTestcfg.TIMEOUT},没ping通的IP：{event.data['PingFailed_IP']}"
         if event.data['restartFlag']:
             msg = msg + "restart后Fail"
-        msg = f"{action}"
+        msg = msg + f"{action}"
         logger.error(msg)
         notify_dingtalk(pingTestcfg,msg)
 
