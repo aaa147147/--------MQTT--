@@ -30,7 +30,10 @@ def register_handlers(event_manager, pingTestcfg, logger):
     @event_manager.on(EventType.PING_TIMEOUT)
     def _on_test_timeout(event: Event):
         action = resolve_event_action(pingTestcfg, EventType.PING_TIMEOUT)
-        msg=f"测试超时,耗时{event.data['elapsed']}>{pingTestcfg.TIMEOUT},没ping通的IP：{event.data['PingFailed_IP']}，{action}"
+        msg=f"测试超时,耗时{event.data['elapsed']}>{pingTestcfg.TIMEOUT},没ping通的IP：{event.data['PingFailed_IP']}"
+        if event.data['restartFlag']:
+            msg = msg + "restart后Fail"
+        msg = f"{action}"
         logger.error(msg)
         notify_dingtalk(pingTestcfg,msg)
 

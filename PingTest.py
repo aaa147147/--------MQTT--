@@ -136,7 +136,7 @@ class NetworkMonitor:
                 # 检查是否超时
                 elapsed_time = time.time() - start_time
                 if elapsed_time > self.timeout:
-                    self.event_manager.emit(EventType.PING_TIMEOUT, {"elapsed": elapsed_time, "PingFailed_IP": [ip for ip, s in self.ip_status.items() if s != "PingPass"]})
+                    self.event_manager.emit(EventType.PING_TIMEOUT, {"restartFlag":False,"elapsed": elapsed_time, "PingFailed_IP": [ip for ip, s in self.ip_status.items() if s != "PingPass"]})
                     
                     #判断重新测试还是停止
                     action = resolve_event_action(pingTestcfg, EventType.PING_TIMEOUT)
@@ -146,7 +146,7 @@ class NetworkMonitor:
                             if self.all_ping():
                                 break
                             if time.time() - start_time > 2 * 60 * 60:  #每隔2小时发一次消息
-                                self.event_manager.emit(EventType.PING_TIMEOUT, {"elapsed": elapsed_time, "PingFailed_IP": [ip for ip, s in self.ip_status.items() if s != "PingPass"]})
+                                self.event_manager.emit(EventType.PING_TIMEOUT, {"restartFlag":True,"elapsed": elapsed_time, "PingFailed_IP": [ip for ip, s in self.ip_status.items() if s != "PingPass"]})
                                 start_time = time.time()
                             time.sleep(1)
                         start_time = time.time()
