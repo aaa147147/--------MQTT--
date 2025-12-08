@@ -80,7 +80,6 @@ class NetworkMonitor:
             if not self.ping_ip(ip):
                 all_pinged = False
                 logger.debug(f"IP {ip} 未 ping 通")
-                break
             else:
                 logger.debug(f"IP {ip} 已 ping 通")
                 self.ip_status[ip] = 'PingPass'
@@ -136,18 +135,23 @@ class NetworkMonitor:
                 # 检查是否超时
                 elapsed_time = time.time() - start_time
                 if elapsed_time > self.timeout:
-                    self.event_manager.emit(EventType.PING_TIMEOUT, {"restartFlag":False,"elapsed": elapsed_time, "PingFailed_IP": [ip for ip, s in self.ip_status.items() if s != "PingPass"]})
+                    self.event_manager.emit(EventType.PING_TIMEOUT, {"restartFlag":'firstTimeOut',"elapsed": round(elapsed_time,2), "PingFailed_IP": [ip for ip, s in self.ip_status.items() if s != "PingPass"]})
                     
                     #判断重新测试还是停止
                     action = resolve_event_action(pingTestcfg, EventType.PING_TIMEOUT)
                     if action == 'restart':
+                        restart_time = time.time()
                         while True:  
+                            elapsed_time = time.time() - restart_time 
+
+                            if elapsed_time > 2 * 60 * 60:  #每隔2小时发一次消息
+                                self.event_manager.emit(EventType.PING_TIMEOUT, {"restartFlag":'towHourTimeOut',"elapsed": round(elapsed_time,2), "PingFailed_IP": [ip for ip, s in self.ip_status.items() if s != "PingPass"]})
+                                restart_time = time.time()
+
                             #如果全部ping通了，就重新开始测试
                             if self.all_ping():
+                                self.event_manager.emit(EventType.PING_TIMEOUT, {"restartFlag":'rePingPass',"elapsed": round(time.time() - start_time,2), "PingFailed_IP": [ip for ip, s in self.ip_status.items() if s != "PingPass"]})
                                 break
-                            if time.time() - start_time > 2 * 60 * 60:  #每隔2小时发一次消息
-                                self.event_manager.emit(EventType.PING_TIMEOUT, {"restartFlag":True,"elapsed": elapsed_time, "PingFailed_IP": [ip for ip, s in self.ip_status.items() if s != "PingPass"]})
-                                start_time = time.time()
                             time.sleep(1)
                         start_time = time.time()
                     else:
