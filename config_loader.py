@@ -32,6 +32,7 @@ def load_config(logger, config_file='config.ini'):
     ADBDEVICECKR_ENABLED = bool(get_config('Settings', 'ADBDEVICECKR_ENABLED', default=False, required=True))
     THREADTEST_ENABLED = bool(get_config('Settings', 'THREADTEST_ENABLED', default=False, required=True))
     CYCLEPINGTEST_ENABLED = bool(get_config('Settings', 'CYCLEPINGTEST_ENABLED', default=False, required=True))
+    MAX_PING_RTT = bool(get_config('Settings', 'MAX_PING_RTT', default=500, required=True))
 
     CYCLEPINGTEST_TIMES = int(get_config('CYCLEPINGTEST', 'CYCLEPINGTEST_TIMES', default=5, required=True))
     CYCLEPINGTEST_DELAY = int(get_config('CYCLEPINGTEST', 'CYCLEPINGTEST_DELAY', default=5, required=True))
@@ -84,5 +85,6 @@ def load_config(logger, config_file='config.ini'):
         DINGTALK_WEBHOOK_URL=DINGTALK_WEBHOOK_URL,
         DINGTALK_MESSAGE_TIMEOUT=DINGTALK_MESSAGE_TIMEOUT,
         DINGTALK_MESSAGE_ERROR=DINGTALK_MESSAGE_ERROR,
-        EVENT_ACTIONS=EVENT_ACTIONS
+        EVENT_ACTIONS=EVENT_ACTIONS,
+        MAX_PING_RTT = MAX_PING_RTT
     )

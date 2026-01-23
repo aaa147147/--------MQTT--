@@ -11,11 +11,12 @@ from event_handlers import register_handlers
 
 from config_loader import load_config
 from mqtt_relay_controller import RelayController  # 引入RelayController类
+from FirewallChecker import FirewallChecker
 from adbdeviceckr import DeviceMonitor
 from cyclepingtest import Cyclepingtest
 
 # 设置控制台窗口标题
-ctypes.windll.kernel32.SetConsoleTitleW(f'PingTest-V03 Copyright © 2024 #EE_Lixin. All Rights Reserved. - [{os.path.basename(os.getcwd())}]')
+ctypes.windll.kernel32.SetConsoleTitleW(f'[{os.path.basename(os.getcwd())}]=PingTest-V03 Copyright © 2024 #EE_Lixin. All Rights Reserved.')
 
 # 配置日志，创建文件处理器，创建控制台处理器，添加处理器到日志记录器
 log_folder = './log'
@@ -70,6 +71,10 @@ class NetworkMonitor:
 
     def ping_ip(self, ip):
         ret = ping(ip, count=1, timeout=2, size=32)
+        rtt = round(ret.rtt_avg*1000,1)
+        if rtt > pingTestcfg.MAX_PING_RTT:
+            logger.debug(f"Ping {ip} 延时太长,耗时{rtt}毫秒")
+            return False
         return ret.success()
     def all_ping(self):
         all_pinged = True # 假设所有网口都 ping 通了
@@ -85,6 +90,15 @@ class NetworkMonitor:
                 self.ip_status[ip] = 'PingPass'
         return all_pinged
     def start_test(self):
+        # 检查防火墙
+        fw_checker = FirewallChecker()
+        is_on, status = fw_checker.is_firewall_on()
+        if is_on:
+            msg = f"检测到防火墙已开启: {status}。\n请关闭防火墙后重试。"
+            logger.warning(msg)
+            print(f"\n{'!'*50}\n{msg}\n{'!'*50}\n")
+            return
+
         # 开始测试
         logger.info("开始测试")
 
