@@ -39,6 +39,20 @@ stream_handler.setFormatter(stream_formatter)
 logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
 
+
+# 检查防火墙
+fw_checker = FirewallChecker()
+is_on, status = fw_checker.is_firewall_on()
+if is_on:
+    msg = f"检测到防火墙已开启: {status}。\n请关闭防火墙后重试。"
+    logger.warning(msg)
+    print(f"\n{'!'*50}\n{msg}\n{'!'*50}\n")
+    exit(1)
+else:
+    msg = "防火墙已关闭。"
+    logger.info(msg)
+    print(f"\n{'!'*50}\n{msg}\n{'!'*50}\n")
+
 # 加载配置项
 pingTestcfg = load_config(logger)
 
@@ -90,15 +104,6 @@ class NetworkMonitor:
                 self.ip_status[ip] = 'PingPass'
         return all_pinged
     def start_test(self):
-        # 检查防火墙
-        fw_checker = FirewallChecker()
-        is_on, status = fw_checker.is_firewall_on()
-        if is_on:
-            msg = f"检测到防火墙已开启: {status}。\n请关闭防火墙后重试。"
-            logger.warning(msg)
-            print(f"\n{'!'*50}\n{msg}\n{'!'*50}\n")
-            return
-
         # 开始测试
         logger.info("开始测试")
 
