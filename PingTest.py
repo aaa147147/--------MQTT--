@@ -89,7 +89,7 @@ class NetworkMonitor:
     def ping_ip(self, ip):
         ret = ping(ip, count=1, timeout=2, size=32)
         rtt = round(ret.rtt_avg*1000,1)
-        if rtt > pingTestcfg.MAX_PING_RTT:
+        if ret.success() and rtt > pingTestcfg.MAX_PING_RTT:
             logger.debug(f"Ping {ip} 延时太长,耗时{rtt}毫秒")
             return False
         return ret.success()
