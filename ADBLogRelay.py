@@ -1,8 +1,14 @@
 import os
 import subprocess
+import urllib3
+
+# 禁用 urllib3 的 SSL 警告
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 try:
     from dulwich import porcelain
     from dulwich.repo import Repo, NotGitRepository
+    from dulwich.config import ConfigFile
 except ImportError:
     print("模块 dulwich 未找到，请使用以下命令安装：pip install dulwich")
     exit(1)
@@ -27,6 +33,15 @@ def git_pull(repo_path):
     """
     try:
         repo = Repo(repo_path)
+        
+        # 禁用 SSL 验证以避免证书错误
+        try:
+            config_path = os.path.join(repo.controldir(), 'config')
+            config = ConfigFile.from_path(config_path)
+            config.set(b'http', b'sslVerify', b'false')
+            config.write_to_path()
+        except Exception as e:
+            print(f"Warning: Failed to disable SSL verify: {e}")
         
         # 1. 获取远程最新数据
         porcelain.fetch(repo, remote_location="origin")

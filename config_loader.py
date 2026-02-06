@@ -37,6 +37,10 @@ def load_config(logger, config_file='config.ini'):
     CYCLEPINGTEST_TIMES = int(get_config('CYCLEPINGTEST', 'CYCLEPINGTEST_TIMES', default=5, required=True))
     CYCLEPINGTEST_DELAY = int(get_config('CYCLEPINGTEST', 'CYCLEPINGTEST_DELAY', default=5, required=True))
 
+    ADBCMDTEST_ENABLED = bool(get_config('ADBCMDTEST', 'ADBCMDTEST_ENABLED', default=False, required=False))
+    ADBCMDTEST_CMD = get_config('ADBCMDTEST', 'ADBCMDTEST_CMD', default='adb root', required=False)
+    ADBCMDTEST_EXPECTED_INCLUDE = get_config('ADBCMDTEST', 'ADBCMDTEST_EXPECTED_INCLUDE', default='', required=False)
+
     RELAY_BROKER = get_config('MQTT', 'RELAY_BROKER', required=True)
     RELAY_PORT = int(get_config('MQTT', 'RELAY_PORT', default=1883, required=True))
     RELAY_PUB_TOPIC = get_config('MQTT', 'RELAY_PUB_TOPIC', required=True)
@@ -86,5 +90,8 @@ def load_config(logger, config_file='config.ini'):
         DINGTALK_MESSAGE_TIMEOUT=DINGTALK_MESSAGE_TIMEOUT,
         DINGTALK_MESSAGE_ERROR=DINGTALK_MESSAGE_ERROR,
         EVENT_ACTIONS=EVENT_ACTIONS,
-        MAX_PING_RTT = MAX_PING_RTT
+        MAX_PING_RTT = MAX_PING_RTT,
+        ADBCMDTEST_ENABLED = ADBCMDTEST_ENABLED,
+        ADBCMDTEST_CMD = ADBCMDTEST_CMD,
+        ADBCMDTEST_EXPECTED_INCLUDE = ADBCMDTEST_EXPECTED_INCLUDE
     )

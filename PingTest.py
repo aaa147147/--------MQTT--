@@ -14,6 +14,7 @@ from mqtt_relay_controller import RelayController  # 引入RelayController类
 from FirewallChecker import FirewallChecker
 from adbdeviceckr import DeviceMonitor
 from cyclepingtest import Cyclepingtest
+from adb_cmd_test import adb_cmd_test
 
 # 设置控制台窗口标题
 ctypes.windll.kernel32.SetConsoleTitleW(f'[{os.path.basename(os.getcwd())}]=PingTest-V03 Copyright © 2024 #EE_Lixin. All Rights Reserved.')
@@ -74,6 +75,8 @@ if pingTestcfg.ADBDEVICECKR_ENABLED:
 if pingTestcfg.CYCLEPINGTEST_ENABLED:
     cyclepingtest = Cyclepingtest(pingTestcfg.IP_ADDRESSES, logger,log_folder, pingTestcfg, event_manager)
 
+if pingTestcfg.ADBCMDTEST_ENABLED:
+    adbcmdtest = adb_cmd_test(pingTestcfg, logger,log_folder, event_manager)
 
 class NetworkMonitor:
     def __init__(self, ip_addresses, timeout, event_manager):
